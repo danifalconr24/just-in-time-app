@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer';
 
 import 'package:http/http.dart' as http;
 
@@ -62,17 +63,43 @@ class RoutesApiService {
       'routingPreference': 'TRAFFIC_AWARE',
     });
 
-    final response = await _client.post(
-      Uri.parse(_baseUrl),
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Goog-Api-Key': apiKey,
-        'X-Goog-FieldMask': _fieldMask,
-      },
-      body: body,
+    log(
+      'POST $_baseUrl | origin=(${trip.originLatLng.latitude}, '
+      '${trip.originLatLng.longitude}) dest=(${trip.destinationLatLng.latitude}, '
+      '${trip.destinationLatLng.longitude})',
+      name: 'RoutesApi',
     );
 
+    final stopwatch = Stopwatch()..start();
+    final http.Response response;
+    try {
+      response = await _client.post(
+        Uri.parse(_baseUrl),
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Goog-Api-Key': apiKey,
+          'X-Goog-FieldMask': _fieldMask,
+        },
+        body: body,
+      );
+    } catch (e) {
+      stopwatch.stop();
+      log(
+        'POST $_baseUrl FAILED after ${stopwatch.elapsedMilliseconds}ms: $e',
+        name: 'RoutesApi',
+        level: 1000,
+      );
+      rethrow;
+    }
+    stopwatch.stop();
+
     if (response.statusCode != 200) {
+      log(
+        'POST $_baseUrl ${response.statusCode} after '
+        '${stopwatch.elapsedMilliseconds}ms: ${response.body}',
+        name: 'RoutesApi',
+        level: 900,
+      );
       throw RoutesApiException(
         'Routes API returned status ${response.statusCode}: ${response.body}',
       );
@@ -82,6 +109,12 @@ class RoutesApiService {
     final List<dynamic> elements = jsonDecode(response.body) as List<dynamic>;
 
     if (elements.isEmpty) {
+      log(
+        'POST $_baseUrl 200 but empty response after '
+        '${stopwatch.elapsedMilliseconds}ms',
+        name: 'RoutesApi',
+        level: 900,
+      );
       throw RoutesApiException('Routes API returned empty response');
     }
 
@@ -89,6 +122,12 @@ class RoutesApiService {
 
     final status = element['status'] as Map<String, dynamic>?;
     if (status != null && status['code'] != null && status['code'] != 0) {
+      log(
+        'POST $_baseUrl element error after ${stopwatch.elapsedMilliseconds}ms: '
+        '${status['message'] ?? 'unknown'}',
+        name: 'RoutesApi',
+        level: 900,
+      );
       throw RoutesApiException(
         'Route matrix element error: ${status['message'] ?? 'unknown'}',
       );
@@ -96,6 +135,12 @@ class RoutesApiService {
 
     final condition = element['condition'] as String?;
     if (condition == 'ROUTE_NOT_FOUND') {
+      log(
+        'POST $_baseUrl ROUTE_NOT_FOUND after '
+        '${stopwatch.elapsedMilliseconds}ms',
+        name: 'RoutesApi',
+        level: 900,
+      );
       throw RouteNotFoundException(
         'No route found between origin and destination',
       );
@@ -103,6 +148,13 @@ class RoutesApiService {
 
     final trafficDuration = _parseDuration(element['duration'] as String);
     final staticDuration = _parseDuration(element['staticDuration'] as String);
+
+    log(
+      'POST $_baseUrl 200 in ${stopwatch.elapsedMilliseconds}ms | '
+      'traffic=${trafficDuration.inMinutes}min '
+      'static=${staticDuration.inMinutes}min',
+      name: 'RoutesApi',
+    );
 
     return RouteMatrixResult(
       trafficAwareDuration: trafficDuration,
