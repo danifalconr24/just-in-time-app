@@ -1,16 +1,177 @@
-Just in time app - JITA
+# JITA - Just In Time App
 
-App that based in a origin location and a destination location it will use Google Routes API for getting traffic information every 30 seconds in the background for the selected origin/location, and if the route 
-duration increases the app will calculate how much time earlier based on route duration on real time the user will need to start traveling to arrive at the expected time the user entered when choosing origin and 
-destination, with this information the app will send an urgent notification to the user. 
+JITA helps users arrive on time by continuously monitoring traffic for a selected
+trip and recalculating when they should leave.
 
-Design: 
+The app monitors one active route (origin -> destination) in the background,
+polling Google Routes API every 30 seconds. If travel time increases due to
+traffic, JITA computes a new required departure time and sends urgent repeated
+notifications when the departure window shifts.
 
-Basic UI that lets the user enter the desired origin and destination locations and the time that he wants to arrive to the destination, a button in the bottom of the screen to confirm the selection.
+## Core Features
 
-Stack:
+- Origin and destination input with Google Places Autocomplete
+- Arrival time picker (user selects desired destination arrival time)
+- Background monitoring every 30 seconds
+- Live traffic-aware travel duration updates
+- Dynamic "Leave by" time recalculation
+- Repeated notifications when traffic worsens and departure time shifts
+- One active route at a time (simple and focused UX)
+
+## Product Flow
+
+1. User selects origin and destination using autocomplete.
+2. User selects target arrival time.
+3. User taps "Start Monitoring".
+4. App stores active trip and starts background monitoring.
+5. Every 30 seconds, app calls `computeRouteMatrix`.
+6. App recalculates required departure time.
+7. If traffic increases and required departure shifts, app sends urgent alert.
+8. Monitoring stops automatically when arrival time passes or user taps
+   "Stop Monitoring".
+
+## Tech Stack
 
 - Flutter 3
 - Dart 3.10
-- Google Routes API (https://developers.google.com/maps/documentation/routes/compute_route_matrix, https://developers.google.com/maps/documentation/routes/reference/rest/v2/TopLevel/computeRouteMatrix)
+- Google Routes API (`computeRouteMatrix`)
+- Google Places API (autocomplete)
 
+Documentation:
+
+- https://developers.google.com/maps/documentation/routes/compute_route_matrix
+- https://developers.google.com/maps/documentation/routes/reference/rest/v2/TopLevel/computeRouteMatrix
+
+## Planned App Architecture
+
+```text
+lib/
+├── main.dart
+├── app.dart
+├── data/
+│   ├── models/
+│   │   ├── route_status.dart
+│   │   └── trip.dart
+│   ├── services/
+│   │   ├── routes_api_service.dart
+│   │   └── location_service.dart
+│   └── repositories/
+│       └── trip_repository.dart
+├── domain/
+│   └── departure_calculator.dart
+├── background/
+│   └── traffic_monitor.dart
+├── notifications/
+│   └── notification_service.dart
+└── ui/
+    ├── home/
+    │   ├── home_screen.dart
+    │   └── home_controller.dart
+    └── monitoring/
+        ├── monitoring_screen.dart
+        └── monitoring_controller.dart
+```
+
+## Main Dependencies
+
+- `http` - Google Routes API REST calls
+- `flutter_google_places_sdk` - Places autocomplete
+- `flutter_background_service` - background monitoring isolate
+- `flutter_local_notifications` - local urgent notifications
+- `flutter_riverpod` - state management
+- `shared_preferences` - persist active trip
+- `intl` - time/date formatting
+- `permission_handler` - runtime permissions
+
+## Departure Time Logic
+
+```text
+baseline_departure = targetArrivalTime - staticDuration
+current_required_departure = targetArrivalTime - currentDuration
+
+if current_required_departure < now:
+    notify urgently (user is already late)
+
+if current_required_departure < baseline_departure:
+    delta = baseline_departure - current_required_departure
+    notify: Leave delta earlier (by HH:mm)
+```
+
+Notification strategy:
+
+- Fire when traffic-aware duration becomes worse than baseline.
+- Re-fire whenever required departure shifts by >= 1 minute since last alert.
+
+## Google Routes API Integration
+
+- Endpoint:
+  `POST https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix`
+- Auth header: `X-Goog-Api-Key`
+- Field mask:
+  `X-Goog-FieldMask: originIndex,destinationIndex,duration,staticDuration,status,condition`
+- Request mode: `travelMode=DRIVE`, `routingPreference=TRAFFIC_AWARE`
+- Polling frequency: every 30 seconds (1x1 matrix)
+
+## UI Design
+
+### Home Screen
+
+- Origin autocomplete input
+- Destination autocomplete input
+- Arrival time picker
+- Full-width "Start Monitoring" button (bottom)
+
+### Monitoring Screen
+
+- Route summary (origin -> destination)
+- Target arrival time
+- Current travel duration (live)
+- Computed "Leave by" time (live)
+- Delta display (e.g., "Leave 12 min earlier than planned")
+- "Stop Monitoring" button
+
+## Platform Behavior
+
+### Android
+
+- Uses foreground service for reliable background monitoring
+- Persistent service notification channel required
+
+### iOS
+
+- Uses `BGAppRefreshTask` / background fetch style scheduling
+- 30-second polling in background is best-effort (OS may throttle)
+
+## Permissions
+
+### Android
+
+- `android.permission.FOREGROUND_SERVICE`
+- `android.permission.POST_NOTIFICATIONS`
+- `android.permission.RECEIVE_BOOT_COMPLETED`
+
+### iOS
+
+- `UIBackgroundModes` (`fetch`, `processing`)
+- `BGTaskSchedulerPermittedIdentifiers`
+- `NSLocationWhenInUseUsageDescription`
+
+## Risks and Mitigations
+
+- iOS background throttling -> clearly communicate best-effort behavior
+- API key exposure -> inject with `--dart-define`, never commit secrets
+- API usage costs -> debounce autocomplete and monitor quotas
+- Notification fatigue -> thresholded re-alerting (>= 1 minute shift)
+- Network failures -> retry on next polling cycle with graceful UI feedback
+
+## Development Roadmap
+
+1. Project scaffold and dependency setup
+2. Data/domain implementation (models, services, calculator)
+3. UI implementation (home + monitoring)
+4. Foreground polling loop
+5. Notification behavior
+6. Background service hardening
+7. Testing, edge cases, and polish
+
+For a detailed implementation plan, see `DEVELOPMENT-PLAN.md`.
