@@ -30,10 +30,83 @@ notifications when the departure window shifts.
 8. Monitoring stops automatically when arrival time passes or user taps
    "Stop Monitoring".
 
+## Running Locally
+
+### Prerequisites
+
+- Flutter SDK (3.41+ recommended)
+- Dart SDK (3.11+)
+- A Google Cloud project with **Routes API** and **Places API** enabled
+- A Google API key with access to both APIs
+
+Verify your toolchain:
+
+```bash
+flutter doctor -v
+```
+
+### Setup
+
+1. Clone the repository and install dependencies:
+
+```bash
+git clone <repo-url>
+cd just-in-time-app
+flutter pub get
+```
+
+2. Obtain a Google API key from the
+   [Google Cloud Console](https://console.cloud.google.com/apis/credentials).
+   Enable the following APIs for your project:
+   - Routes API
+   - Places API (New)
+
+3. Run the app, injecting the API key at build time:
+
+```bash
+flutter run --dart-define=GOOGLE_MAPS_API_KEY=YOUR_KEY_HERE
+```
+
+Replace `YOUR_KEY_HERE` with your actual key. The key is never stored in
+source — it is passed as a compile-time constant via `--dart-define`.
+
+### Running on a specific platform
+
+```bash
+flutter run -d ios --dart-define=GOOGLE_MAPS_API_KEY=YOUR_KEY_HERE
+flutter run -d android --dart-define=GOOGLE_MAPS_API_KEY=YOUR_KEY_HERE
+```
+
+### Running tests
+
+```bash
+flutter test                # all tests
+flutter test --coverage     # with coverage report
+
+# single file
+flutter test test/domain/departure_calculator_test.dart
+
+# single test by name
+flutter test --plain-name "returns correct required departure time"
+```
+
+### Static analysis and formatting
+
+```bash
+flutter analyze   # check for lint/type issues
+dart format .     # auto-format all Dart files
+```
+
+### Building release artifacts
+
+```bash
+flutter build apk --release --dart-define=GOOGLE_MAPS_API_KEY=YOUR_KEY_HERE
+flutter build ios --release --dart-define=GOOGLE_MAPS_API_KEY=YOUR_KEY_HERE
+```
+
 ## Tech Stack
 
-- Flutter 3
-- Dart 3.10
+- Flutter 3.41 / Dart 3.11
 - Google Routes API (`computeRouteMatrix`)
 - Google Places API (autocomplete)
 
@@ -42,7 +115,7 @@ Documentation:
 - https://developers.google.com/maps/documentation/routes/compute_route_matrix
 - https://developers.google.com/maps/documentation/routes/reference/rest/v2/TopLevel/computeRouteMatrix
 
-## Planned App Architecture
+## App Architecture
 
 ```text
 lib/
@@ -166,12 +239,12 @@ Notification strategy:
 
 ## Development Roadmap
 
-1. Project scaffold and dependency setup
-2. Data/domain implementation (models, services, calculator)
-3. UI implementation (home + monitoring)
-4. Foreground polling loop
-5. Notification behavior
-6. Background service hardening
-7. Testing, edge cases, and polish
+1. ~~Project scaffold and dependency setup~~
+2. ~~Data/domain implementation (models, services, calculator)~~
+3. ~~UI implementation (home + monitoring)~~
+4. ~~Foreground polling loop~~
+5. ~~Notification behavior~~
+6. ~~Background service hardening~~
+7. ~~Testing, edge cases, and polish~~
 
 For a detailed implementation plan, see `DEVELOPMENT-PLAN.md`.

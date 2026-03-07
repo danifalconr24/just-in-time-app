@@ -1,0 +1,27 @@
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+*.iml
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+
+# Environment / Secrets
+.env
+*.env.local
+
+# Coverage
+coverage/
+
+# Generated
+*.g.dart
+*.freezed.dart
