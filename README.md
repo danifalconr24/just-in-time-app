@@ -4,15 +4,15 @@ JITA helps users arrive on time by continuously monitoring traffic for a selecte
 trip and recalculating when they should leave.
 
 The app monitors one active route (origin -> destination) in the background,
-polling Google Routes API every 30 seconds. If travel time increases due to
-traffic, JITA computes a new required departure time and sends urgent repeated
-notifications when the departure window shifts.
+polling Google Routes API every 60 seconds (configurable). If travel time
+increases due to traffic, JITA computes a new required departure time and sends
+urgent repeated notifications when the departure window shifts.
 
 ## Core Features
 
 - Origin and destination input with Google Places Autocomplete
 - Arrival time picker (user selects desired destination arrival time)
-- Background monitoring every 30 seconds
+- Background monitoring every 60 seconds (configurable)
 - Live traffic-aware travel duration updates
 - Dynamic "Leave by" time recalculation
 - Repeated notifications when traffic worsens and departure time shifts
@@ -24,7 +24,7 @@ notifications when the departure window shifts.
 2. User selects target arrival time.
 3. User taps "Start Monitoring".
 4. App stores active trip and starts background monitoring.
-5. Every 30 seconds, app calls `computeRouteMatrix`.
+5. Every 60 seconds (configurable), app calls `computeRouteMatrix`.
 6. App recalculates required departure time.
 7. If traffic increases and required departure shifts, app sends urgent alert.
 8. Monitoring stops automatically when arrival time passes or user taps
@@ -69,6 +69,24 @@ flutter run --dart-define=GOOGLE_MAPS_API_KEY=YOUR_KEY_HERE
 
 Replace `YOUR_KEY_HERE` with your actual key. The key is never stored in
 source — it is passed as a compile-time constant via `--dart-define`.
+
+### Environment Configuration
+
+All runtime configuration is passed via `--dart-define` flags at build time.
+These values are forwarded to the background isolate through SharedPreferences.
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `GOOGLE_MAPS_API_KEY` | Yes | — | Google API key with Routes API and Places API enabled |
+| `POLL_INTERVAL_SECONDS` | No | `60` | Background traffic polling interval in seconds |
+
+Example with a custom polling interval:
+
+```bash
+flutter run \
+  --dart-define=GOOGLE_MAPS_API_KEY=YOUR_KEY_HERE \
+  --dart-define=POLL_INTERVAL_SECONDS=90
+```
 
 ### Running on a specific platform
 
@@ -183,7 +201,8 @@ Notification strategy:
 - Field mask:
   `X-Goog-FieldMask: originIndex,destinationIndex,duration,staticDuration,status,condition`
 - Request mode: `travelMode=DRIVE`, `routingPreference=TRAFFIC_AWARE`
-- Polling frequency: every 30 seconds (1x1 matrix)
+- Polling frequency: every 60 seconds by default, configurable via
+  `POLL_INTERVAL_SECONDS` (1x1 matrix)
 
 ## UI Design
 
@@ -213,7 +232,7 @@ Notification strategy:
 ### iOS
 
 - Uses `BGAppRefreshTask` / background fetch style scheduling
-- 30-second polling in background is best-effort (OS may throttle)
+- 60-second polling in background is best-effort (OS may throttle)
 
 ## Permissions
 

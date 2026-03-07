@@ -49,14 +49,17 @@ class HomeController extends StateNotifier<HomeState> {
   final LocationService _locationService;
   final TripRepository _tripRepository;
   final TrafficMonitor _trafficMonitor;
+  final SharedPreferences _prefs;
 
   HomeController({
     required LocationService locationService,
     required TripRepository tripRepository,
     required TrafficMonitor trafficMonitor,
+    required SharedPreferences prefs,
   }) : _locationService = locationService,
        _tripRepository = tripRepository,
        _trafficMonitor = trafficMonitor,
+       _prefs = prefs,
        super(const HomeState());
 
   LocationService get locationService => _locationService;
@@ -118,6 +121,17 @@ class HomeController extends StateNotifier<HomeState> {
       );
 
       await _tripRepository.saveTrip(trip);
+
+      // Persist configuration so the background isolate can read it.
+      const apiKey = String.fromEnvironment('GOOGLE_MAPS_API_KEY');
+      await _prefs.setString('google_api_key', apiKey);
+
+      const pollIntervalSeconds = int.fromEnvironment(
+        'POLL_INTERVAL_SECONDS',
+        defaultValue: 60,
+      );
+      await _prefs.setInt('poll_interval_seconds', pollIntervalSeconds);
+
       await _trafficMonitor.start();
 
       state = state.copyWith(isLoading: false);
@@ -158,6 +172,7 @@ final homeControllerProvider = StateNotifierProvider<HomeController, HomeState>(
       locationService: ref.watch(locationServiceProvider),
       tripRepository: ref.watch(tripRepositoryProvider),
       trafficMonitor: ref.watch(trafficMonitorProvider),
+      prefs: ref.watch(sharedPreferencesProvider),
     );
   },
 );

@@ -9,8 +9,8 @@ import '../data/services/routes_api_service.dart';
 import '../domain/departure_calculator.dart';
 import '../notifications/notification_service.dart';
 
-/// Polling interval for the background service.
-const _pollInterval = Duration(seconds: 30);
+/// Default polling interval for the background service (in seconds).
+const _defaultPollIntervalSeconds = 60;
 
 /// Background polling task that monitors traffic and sends notifications.
 class TrafficMonitor {
@@ -75,6 +75,11 @@ Future<void> _onStart(ServiceInstance service) async {
   final routesApi = RoutesApiService(apiKey: apiKey);
   final timeFormat = DateFormat('HH:mm');
 
+  // Read configurable poll interval (persisted by the app before starting).
+  final pollIntervalSeconds =
+      prefs.getInt('poll_interval_seconds') ?? _defaultPollIntervalSeconds;
+  final pollInterval = Duration(seconds: pollIntervalSeconds);
+
   Timer? timer;
 
   service.on('stop').listen((_) {
@@ -83,7 +88,7 @@ Future<void> _onStart(ServiceInstance service) async {
     service.stopSelf();
   });
 
-  timer = Timer.periodic(_pollInterval, (_) async {
+  Future<void> poll() async {
     final trip = tripRepo.loadTrip();
     if (trip == null) {
       timer?.cancel();
@@ -129,5 +134,9 @@ Future<void> _onStart(ServiceInstance service) async {
     } catch (_) {
       // Catch-all for network errors, etc.
     }
-  });
+  }
+
+  // Run an immediate first poll, then continue on the periodic timer.
+  await poll();
+  timer = Timer.periodic(pollInterval, (_) => poll());
 }
