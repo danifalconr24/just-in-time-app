@@ -13,6 +13,7 @@ class HomeState {
   final PlaceResult? destination;
   final TimeOfDay? arrivalTime;
   final bool isLoading;
+  final bool isLoadingLocation;
   final String? errorMessage;
 
   const HomeState({
@@ -20,6 +21,7 @@ class HomeState {
     this.destination,
     this.arrivalTime,
     this.isLoading = false,
+    this.isLoadingLocation = false,
     this.errorMessage,
   });
 
@@ -28,6 +30,7 @@ class HomeState {
     PlaceResult? destination,
     TimeOfDay? arrivalTime,
     bool? isLoading,
+    bool? isLoadingLocation,
     String? errorMessage,
   }) {
     return HomeState(
@@ -35,6 +38,7 @@ class HomeState {
       destination: destination ?? this.destination,
       arrivalTime: arrivalTime ?? this.arrivalTime,
       isLoading: isLoading ?? this.isLoading,
+      isLoadingLocation: isLoadingLocation ?? this.isLoadingLocation,
       errorMessage: errorMessage,
     );
   }
@@ -85,6 +89,33 @@ class HomeController extends StateNotifier<HomeState> {
 
   void clearDestination() {
     state = HomeState(origin: state.origin, arrivalTime: state.arrivalTime);
+  }
+
+  /// Requests location permission, gets the current device position,
+  /// and sets it as the origin.
+  ///
+  /// Returns the [PlaceResult] on success, or `null` on failure
+  /// (with an error message set in state).
+  Future<PlaceResult?> setOriginFromCurrentLocation() async {
+    state = state.copyWith(isLoadingLocation: true, errorMessage: null);
+
+    try {
+      final place = await _locationService.getCurrentLocation();
+      state = state.copyWith(origin: place, isLoadingLocation: false);
+      return place;
+    } on LocationPermissionDeniedException catch (e) {
+      state = state.copyWith(isLoadingLocation: false, errorMessage: e.message);
+      return null;
+    } on LocationServiceDisabledException catch (e) {
+      state = state.copyWith(isLoadingLocation: false, errorMessage: e.message);
+      return null;
+    } catch (e) {
+      state = state.copyWith(
+        isLoadingLocation: false,
+        errorMessage: 'Failed to get current location: $e',
+      );
+      return null;
+    }
   }
 
   /// Validates the form and starts monitoring.

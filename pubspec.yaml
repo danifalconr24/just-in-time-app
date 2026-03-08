@@ -37,6 +37,12 @@ dependencies:
   # Runtime permissions
   permission_handler: ^11.0.0
 
+  # Device GPS location
+  geolocator: ^13.0.2
+
+  # Reverse geocoding (coordinates to address)
+  geocoding: ^3.0.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

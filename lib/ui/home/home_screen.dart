@@ -62,6 +62,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   controller.clearOrigin();
                   _originController.clear();
                 },
+                trailing: _CurrentLocationButton(
+                  isLoading: state.isLoadingLocation,
+                  onPressed: state.isLoadingLocation
+                      ? null
+                      : () => _useCurrentLocation(controller),
+                ),
               ),
               const SizedBox(height: 16),
 
@@ -179,6 +185,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       Navigator.of(context).pushReplacementNamed('/monitoring');
     }
   }
+
+  Future<void> _useCurrentLocation(HomeController controller) async {
+    final place = await controller.setOriginFromCurrentLocation();
+    if (place != null && mounted) {
+      _originController.text = place.displayName;
+    }
+  }
 }
 
 /// A text field with autocomplete dropdown for Google Places.
@@ -189,6 +202,7 @@ class _PlaceAutocompleteField extends StatefulWidget {
   final LocationService locationService;
   final ValueChanged<PlaceResult> onPlaceSelected;
   final VoidCallback onClear;
+  final Widget? trailing;
 
   const _PlaceAutocompleteField({
     required this.controller,
@@ -197,6 +211,7 @@ class _PlaceAutocompleteField extends StatefulWidget {
     required this.locationService,
     required this.onPlaceSelected,
     required this.onClear,
+    this.trailing,
   });
 
   @override
@@ -272,8 +287,11 @@ class _PlaceAutocompleteFieldState extends State<_PlaceAutocompleteField> {
           decoration: InputDecoration(
             labelText: widget.label,
             hintText: widget.hint,
-            suffixIcon: widget.controller.text.isNotEmpty
-                ? IconButton(
+            suffixIcon: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (widget.controller.text.isNotEmpty)
+                  IconButton(
                     icon: const Icon(Icons.clear),
                     onPressed: () {
                       widget.onClear();
@@ -284,7 +302,11 @@ class _PlaceAutocompleteFieldState extends State<_PlaceAutocompleteField> {
                       });
                     },
                   )
-                : const Icon(Icons.search),
+                else
+                  const Icon(Icons.search),
+                if (widget.trailing != null) widget.trailing!,
+              ],
+            ),
           ),
           onChanged: _onTextChanged,
         ),
@@ -325,6 +347,38 @@ class _PlaceAutocompleteFieldState extends State<_PlaceAutocompleteField> {
             ),
           ),
       ],
+    );
+  }
+}
+
+/// A button that shows a "my location" icon, or a loading spinner
+/// while the device position is being fetched.
+class _CurrentLocationButton extends StatelessWidget {
+  final bool isLoading;
+  final VoidCallback? onPressed;
+
+  const _CurrentLocationButton({
+    required this.isLoading,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (isLoading) {
+      return const Padding(
+        padding: EdgeInsets.all(12),
+        child: SizedBox(
+          height: 20,
+          width: 20,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      );
+    }
+
+    return IconButton(
+      icon: const Icon(Icons.my_location),
+      tooltip: 'Use current location',
+      onPressed: onPressed,
     );
   }
 }
