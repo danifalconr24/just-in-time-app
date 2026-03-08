@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../data/repositories/trip_repository.dart';
 import '../data/services/routes_api_service.dart';
 import '../domain/departure_calculator.dart';
+import '../notifications/live_activity_service.dart';
 import '../notifications/notification_service.dart';
 
 /// Default polling interval for the background service (in seconds).
@@ -66,6 +67,9 @@ Future<void> _onStart(ServiceInstance service) async {
   final notificationService = NotificationService();
   await notificationService.initialize();
 
+  final liveActivityService = LiveActivityService();
+  await liveActivityService.initialize();
+
   // Retrieve API key from shared preferences (set by the app before starting).
   final apiKey = prefs.getString('google_api_key') ?? '';
   if (apiKey.isEmpty) {
@@ -93,9 +97,10 @@ Future<void> _onStart(ServiceInstance service) async {
 
   Timer? timer;
 
-  service.on('stop').listen((_) {
+  service.on('stop').listen((_) async {
     log('Stop requested, shutting down', name: 'TrafficMonitor');
     timer?.cancel();
+    await liveActivityService.endActivity();
     routesApi.dispose();
     service.stopSelf();
   });
@@ -143,6 +148,13 @@ Future<void> _onStart(ServiceInstance service) async {
         'deltaMinutes': departure.deltaMinutes,
         'isLate': departure.isLate,
       });
+
+      // Update the iOS Live Activity with fresh route data.
+      await liveActivityService.updateActivity(
+        leaveByTime: departure.requiredDeparture,
+        currentDurationMinutes: result.trafficAwareDuration.inMinutes,
+        isLate: departure.isLate,
+      );
 
       if (departure.shouldNotify) {
         await notificationService.showTrafficAlert(

@@ -6,8 +6,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../background/traffic_monitor.dart';
 import '../../data/models/trip.dart';
 import '../../data/repositories/trip_repository.dart';
+import '../../notifications/live_activity_service.dart';
 import '../home/home_controller.dart'
-    show tripRepositoryProvider, trafficMonitorProvider;
+    show
+        liveActivityServiceProvider,
+        tripRepositoryProvider,
+        trafficMonitorProvider;
 
 /// Live monitoring state.
 class MonitoringState {
@@ -58,13 +62,16 @@ class MonitoringState {
 class MonitoringController extends StateNotifier<MonitoringState> {
   final TripRepository _tripRepository;
   final TrafficMonitor _trafficMonitor;
+  final LiveActivityService _liveActivityService;
   StreamSubscription<Map<String, dynamic>?>? _statusSubscription;
 
   MonitoringController({
     required TripRepository tripRepository,
     required TrafficMonitor trafficMonitor,
+    required LiveActivityService liveActivityService,
   }) : _tripRepository = tripRepository,
        _trafficMonitor = trafficMonitor,
+       _liveActivityService = liveActivityService,
        super(const MonitoringState()) {
     _loadTrip();
     _listenToUpdates();
@@ -114,6 +121,7 @@ class MonitoringController extends StateNotifier<MonitoringState> {
   /// Stops monitoring and clears the active trip.
   Future<void> stopMonitoring() async {
     await _trafficMonitor.stop();
+    await _liveActivityService.endActivity();
     await _tripRepository.clearTrip();
   }
 
@@ -129,5 +137,6 @@ final monitoringControllerProvider =
       return MonitoringController(
         tripRepository: ref.watch(tripRepositoryProvider),
         trafficMonitor: ref.watch(trafficMonitorProvider),
+        liveActivityService: ref.watch(liveActivityServiceProvider),
       );
     });
