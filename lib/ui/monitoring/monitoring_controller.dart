@@ -125,7 +125,9 @@ class MonitoringController extends StateNotifier<MonitoringState> {
 }
 
 final monitoringControllerProvider =
-    StateNotifierProvider<MonitoringController, MonitoringState>((ref) {
+    StateNotifierProvider.autoDispose<MonitoringController, MonitoringState>((
+      ref,
+    ) {
       return MonitoringController(
         tripRepository: ref.watch(tripRepositoryProvider),
         trafficMonitor: ref.watch(trafficMonitorProvider),
