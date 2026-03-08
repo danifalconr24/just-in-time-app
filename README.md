@@ -4,15 +4,15 @@ JITA helps users arrive on time by continuously monitoring traffic for a selecte
 trip and recalculating when they should leave.
 
 The app monitors one active route (origin -> destination) in the background,
-polling Google Routes API every 30 seconds. If travel time increases due to
-traffic, JITA computes a new required departure time and sends urgent repeated
-notifications when the departure window shifts.
+polling Google Routes API every 60 seconds (configurable). If travel time
+increases due to traffic, JITA computes a new required departure time and sends
+urgent repeated notifications when the departure window shifts.
 
 ## Core Features
 
 - Origin and destination input with Google Places Autocomplete
 - Arrival time picker (user selects desired destination arrival time)
-- Background monitoring every 30 seconds
+- Background monitoring every 60 seconds (configurable)
 - Live traffic-aware travel duration updates
 - Dynamic "Leave by" time recalculation
 - Repeated notifications when traffic worsens and departure time shifts
@@ -24,16 +24,107 @@ notifications when the departure window shifts.
 2. User selects target arrival time.
 3. User taps "Start Monitoring".
 4. App stores active trip and starts background monitoring.
-5. Every 30 seconds, app calls `computeRouteMatrix`.
+5. Every 60 seconds (configurable), app calls `computeRouteMatrix`.
 6. App recalculates required departure time.
 7. If traffic increases and required departure shifts, app sends urgent alert.
 8. Monitoring stops automatically when arrival time passes or user taps
    "Stop Monitoring".
 
+## Running Locally
+
+### Prerequisites
+
+- Flutter SDK (3.41+ recommended)
+- Dart SDK (3.11+)
+- A Google Cloud project with **Routes API** and **Places API** enabled
+- A Google API key with access to both APIs
+
+Verify your toolchain:
+
+```bash
+flutter doctor -v
+```
+
+### Setup
+
+1. Clone the repository and install dependencies:
+
+```bash
+git clone <repo-url>
+cd just-in-time-app
+flutter pub get
+```
+
+2. Obtain a Google API key from the
+   [Google Cloud Console](https://console.cloud.google.com/apis/credentials).
+   Enable the following APIs for your project:
+   - Routes API
+   - Places API (New)
+
+3. Run the app, injecting the API key at build time:
+
+```bash
+flutter run --dart-define=GOOGLE_MAPS_API_KEY=YOUR_KEY_HERE
+```
+
+Replace `YOUR_KEY_HERE` with your actual key. The key is never stored in
+source — it is passed as a compile-time constant via `--dart-define`.
+
+### Environment Configuration
+
+All runtime configuration is passed via `--dart-define` flags at build time.
+These values are forwarded to the background isolate through SharedPreferences.
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `GOOGLE_MAPS_API_KEY` | Yes | — | Google API key with Routes API and Places API enabled |
+| `POLL_INTERVAL_SECONDS` | No | `60` | Background traffic polling interval in seconds |
+
+Example with a custom polling interval:
+
+```bash
+flutter run \
+  --dart-define=GOOGLE_MAPS_API_KEY=YOUR_KEY_HERE \
+  --dart-define=POLL_INTERVAL_SECONDS=90
+```
+
+### Running on a specific platform
+
+```bash
+flutter run -d ios --dart-define=GOOGLE_MAPS_API_KEY=YOUR_KEY_HERE
+flutter run -d android --dart-define=GOOGLE_MAPS_API_KEY=YOUR_KEY_HERE
+```
+
+### Running tests
+
+```bash
+flutter test                # all tests
+flutter test --coverage     # with coverage report
+
+# single file
+flutter test test/domain/departure_calculator_test.dart
+
+# single test by name
+flutter test --plain-name "returns correct required departure time"
+```
+
+### Static analysis and formatting
+
+```bash
+flutter analyze   # check for lint/type issues
+dart format .     # auto-format all Dart files
+```
+
+### Building release artifacts
+
+```bash
+flutter build apk --release --dart-define=GOOGLE_MAPS_API_KEY=YOUR_KEY_HERE
+flutter build ios --release --dart-define=GOOGLE_MAPS_API_KEY=YOUR_KEY_HERE
+```
+
 ## Tech Stack
 
-- Flutter 3
-- Dart 3.10
+- Flutter 3.41 / Dart 3.11
 - Google Routes API (`computeRouteMatrix`)
 - Google Places API (autocomplete)
 
@@ -42,7 +133,7 @@ Documentation:
 - https://developers.google.com/maps/documentation/routes/compute_route_matrix
 - https://developers.google.com/maps/documentation/routes/reference/rest/v2/TopLevel/computeRouteMatrix
 
-## Planned App Architecture
+## App Architecture
 
 ```text
 lib/
@@ -110,7 +201,8 @@ Notification strategy:
 - Field mask:
   `X-Goog-FieldMask: originIndex,destinationIndex,duration,staticDuration,status,condition`
 - Request mode: `travelMode=DRIVE`, `routingPreference=TRAFFIC_AWARE`
-- Polling frequency: every 30 seconds (1x1 matrix)
+- Polling frequency: every 60 seconds by default, configurable via
+  `POLL_INTERVAL_SECONDS` (1x1 matrix)
 
 ## UI Design
 
@@ -140,7 +232,7 @@ Notification strategy:
 ### iOS
 
 - Uses `BGAppRefreshTask` / background fetch style scheduling
-- 30-second polling in background is best-effort (OS may throttle)
+- 60-second polling in background is best-effort (OS may throttle)
 
 ## Permissions
 
@@ -166,12 +258,12 @@ Notification strategy:
 
 ## Development Roadmap
 
-1. Project scaffold and dependency setup
-2. Data/domain implementation (models, services, calculator)
-3. UI implementation (home + monitoring)
-4. Foreground polling loop
-5. Notification behavior
-6. Background service hardening
-7. Testing, edge cases, and polish
+1. ~~Project scaffold and dependency setup~~
+2. ~~Data/domain implementation (models, services, calculator)~~
+3. ~~UI implementation (home + monitoring)~~
+4. ~~Foreground polling loop~~
+5. ~~Notification behavior~~
+6. ~~Background service hardening~~
+7. ~~Testing, edge cases, and polish~~
 
 For a detailed implementation plan, see `DEVELOPMENT-PLAN.md`.
