@@ -1,5 +1,7 @@
 PODS:
   - Flutter (1.0.0)
+  - flutter_app_group_directory (0.0.1):
+    - Flutter
   - flutter_background_service_ios (0.0.3):
     - Flutter
   - flutter_google_places_sdk_ios (0.0.3):
@@ -8,6 +10,8 @@ PODS:
   - flutter_local_notifications (0.0.1):
     - Flutter
   - GooglePlaces (8.5.0)
+  - live_activities (0.0.1):
+    - Flutter
   - permission_handler_apple (9.3.0):
     - Flutter
   - shared_preferences_foundation (0.0.1):
@@ -16,9 +20,11 @@ PODS:
 
 DEPENDENCIES:
   - Flutter (from `Flutter`)
+  - flutter_app_group_directory (from `.symlinks/plugins/flutter_app_group_directory/ios`)
   - flutter_background_service_ios (from `.symlinks/plugins/flutter_background_service_ios/ios`)
   - flutter_google_places_sdk_ios (from `.symlinks/plugins/flutter_google_places_sdk_ios/ios`)
   - flutter_local_notifications (from `.symlinks/plugins/flutter_local_notifications/ios`)
+  - live_activities (from `.symlinks/plugins/live_activities/ios`)
   - permission_handler_apple (from `.symlinks/plugins/permission_handler_apple/ios`)
   - shared_preferences_foundation (from `.symlinks/plugins/shared_preferences_foundation/darwin`)
 
@@ -29,12 +35,16 @@ SPEC REPOS:
 EXTERNAL SOURCES:
   Flutter:
     :path: Flutter
+  flutter_app_group_directory:
+    :path: ".symlinks/plugins/flutter_app_group_directory/ios"
   flutter_background_service_ios:
     :path: ".symlinks/plugins/flutter_background_service_ios/ios"
   flutter_google_places_sdk_ios:
     :path: ".symlinks/plugins/flutter_google_places_sdk_ios/ios"
   flutter_local_notifications:
     :path: ".symlinks/plugins/flutter_local_notifications/ios"
+  live_activities:
+    :path: ".symlinks/plugins/live_activities/ios"
   permission_handler_apple:
     :path: ".symlinks/plugins/permission_handler_apple/ios"
   shared_preferences_foundation:
@@ -42,13 +52,15 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+  flutter_app_group_directory: 55b5362007d1c0cb45dc1dd1e94f67d615f45a6b
   flutter_background_service_ios: 00d31bdff7b4bfe06d32375df358abe0329cf87e
   flutter_google_places_sdk_ios: c2236643eea32395f32d1667651d796f4377996a
   flutter_local_notifications: a5a732f069baa862e728d839dd2ebb904737effb
   GooglePlaces: 426efb69051e7b460e16300ba63598687d10fa1a
+  live_activities: 4dfa736d0736e1c77866a2f9c056a76513cc9e7b
   permission_handler_apple: 4ed2196e43d0651e8ff7ca3483a069d469701f2d
   shared_preferences_foundation: 7036424c3d8ec98dfe75ff1667cb0cd531ec82bb
 
-PODFILE CHECKSUM: 47a975b025fd73c64ad6a2ea2e3da81b756de368
+PODFILE CHECKSUM: e6a59162c296a3e5c21480734102ebc06396b22e
 
 COCOAPODS: 1.16.2

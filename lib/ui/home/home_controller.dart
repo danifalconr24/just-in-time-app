@@ -6,6 +6,7 @@ import '../../background/traffic_monitor.dart';
 import '../../data/models/trip.dart';
 import '../../data/repositories/trip_repository.dart';
 import '../../data/services/location_service.dart';
+import '../../notifications/live_activity_service.dart';
 
 /// State for the home screen form.
 class HomeState {
@@ -49,16 +50,19 @@ class HomeController extends StateNotifier<HomeState> {
   final LocationService _locationService;
   final TripRepository _tripRepository;
   final TrafficMonitor _trafficMonitor;
+  final LiveActivityService _liveActivityService;
   final SharedPreferences _prefs;
 
   HomeController({
     required LocationService locationService,
     required TripRepository tripRepository,
     required TrafficMonitor trafficMonitor,
+    required LiveActivityService liveActivityService,
     required SharedPreferences prefs,
   }) : _locationService = locationService,
        _tripRepository = tripRepository,
        _trafficMonitor = trafficMonitor,
+       _liveActivityService = liveActivityService,
        _prefs = prefs,
        super(const HomeState());
 
@@ -132,6 +136,16 @@ class HomeController extends StateNotifier<HomeState> {
       );
       await _prefs.setInt('poll_interval_seconds', pollIntervalSeconds);
 
+      // Start the iOS Live Activity BEFORE the background service so that
+      // the activity ID is persisted and available when the background
+      // isolate performs its first poll and calls updateActivity().
+      await _liveActivityService.startActivity(
+        leaveByTime: targetArrival,
+        currentDurationMinutes: 0,
+        destinationName: state.destination!.displayName,
+        isLate: false,
+      );
+
       await _trafficMonitor.start();
 
       state = state.copyWith(isLoading: false);
@@ -166,12 +180,17 @@ final trafficMonitorProvider = Provider<TrafficMonitor>((ref) {
   return TrafficMonitor();
 });
 
+final liveActivityServiceProvider = Provider<LiveActivityService>((ref) {
+  return LiveActivityService();
+});
+
 final homeControllerProvider = StateNotifierProvider<HomeController, HomeState>(
   (ref) {
     return HomeController(
       locationService: ref.watch(locationServiceProvider),
       tripRepository: ref.watch(tripRepositoryProvider),
       trafficMonitor: ref.watch(trafficMonitorProvider),
+      liveActivityService: ref.watch(liveActivityServiceProvider),
       prefs: ref.watch(sharedPreferencesProvider),
     );
   },
