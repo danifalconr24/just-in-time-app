@@ -150,10 +150,13 @@ Future<void> _onStart(ServiceInstance service) async {
       });
 
       // Update the iOS Live Activity with fresh route data.
+      // Uses createOrUpdateActivity under the hood, so the activity is
+      // created automatically if it does not already exist.
       await liveActivityService.updateActivity(
         leaveByTime: departure.requiredDeparture,
         currentDurationMinutes: result.trafficAwareDuration.inMinutes,
         isLate: departure.isLate,
+        destinationName: trip.destinationName,
       );
 
       if (departure.shouldNotify) {

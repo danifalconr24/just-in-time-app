@@ -136,15 +136,17 @@ class HomeController extends StateNotifier<HomeState> {
       );
       await _prefs.setInt('poll_interval_seconds', pollIntervalSeconds);
 
-      await _trafficMonitor.start();
-
-      // Start the iOS Live Activity with initial data.
+      // Start the iOS Live Activity BEFORE the background service so that
+      // the activity ID is persisted and available when the background
+      // isolate performs its first poll and calls updateActivity().
       await _liveActivityService.startActivity(
         leaveByTime: targetArrival,
         currentDurationMinutes: 0,
         destinationName: state.destination!.displayName,
         isLate: false,
       );
+
+      await _trafficMonitor.start();
 
       state = state.copyWith(isLoading: false);
       return true;

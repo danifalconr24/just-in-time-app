@@ -155,13 +155,17 @@ struct ExpandedLeading: View {
     let context: ActivityViewContext<LiveActivitiesAppAttributes>
 
     var body: some View {
-        let isLate = sharedDefault.bool(
-            forKey: context.attributes.prefixedKey("isLate"))
+        let durationMinutes = sharedDefault.integer(
+            forKey: context.attributes.prefixedKey("currentDurationMinutes"))
         VStack(alignment: .center, spacing: 2) {
-            Image(systemName: "clock.arrow.circlepath")
+            Image(systemName: "car.fill")
                 .font(.title3)
-                .foregroundColor(isLate ? .red : .blue)
-            Text("Leave By")
+                .foregroundColor(.orange)
+            Text("\(durationMinutes) min")
+                .font(.caption)
+                .fontWeight(.semibold)
+                .foregroundColor(.white)
+            Text("Travel")
                 .font(.caption2)
                 .foregroundColor(.secondary)
         }
@@ -173,15 +177,21 @@ struct ExpandedTrailing: View {
     let context: ActivityViewContext<LiveActivitiesAppAttributes>
 
     var body: some View {
-        let durationMinutes = sharedDefault.integer(
-            forKey: context.attributes.prefixedKey("currentDurationMinutes"))
+        let leaveByTime = sharedDefault.string(
+            forKey: context.attributes.prefixedKey("leaveByTime")) ?? "--:--"
+        let isLate = sharedDefault.bool(
+            forKey: context.attributes.prefixedKey("isLate"))
         VStack(alignment: .center, spacing: 2) {
-            Image(systemName: "car.fill")
+            Image(systemName: "clock.arrow.circlepath")
                 .font(.title3)
-                .foregroundColor(.orange)
-            Text("\(durationMinutes) min")
+                .foregroundColor(isLate ? .red : .blue)
+            Text(leaveByTime)
                 .font(.caption)
                 .fontWeight(.semibold)
+                .foregroundColor(isLate ? .red : .white)
+            Text("Leave By")
+                .font(.caption2)
+                .foregroundColor(.secondary)
         }
     }
 }
@@ -191,18 +201,13 @@ struct ExpandedCenter: View {
     let context: ActivityViewContext<LiveActivitiesAppAttributes>
 
     var body: some View {
-        let leaveByTime = sharedDefault.string(
-            forKey: context.attributes.prefixedKey("leaveByTime")) ?? "--:--"
-        let isLate = sharedDefault.bool(
-            forKey: context.attributes.prefixedKey("isLate"))
         let destinationName = sharedDefault.string(
             forKey: context.attributes.prefixedKey("destinationName")) ?? "Destination"
 
-        VStack(spacing: 4) {
-            Text(leaveByTime)
-                .font(.title)
-                .fontWeight(.bold)
-                .foregroundColor(isLate ? .red : .white)
+        HStack(spacing: 4) {
+            Image(systemName: "mappin.circle.fill")
+                .font(.caption)
+                .foregroundColor(.red)
             Text(destinationName)
                 .font(.caption)
                 .foregroundColor(.secondary)
@@ -218,10 +223,16 @@ struct CompactLeadingView: View {
     let context: ActivityViewContext<LiveActivitiesAppAttributes>
 
     var body: some View {
-        let isLate = sharedDefault.bool(
-            forKey: context.attributes.prefixedKey("isLate"))
-        Image(systemName: "clock.arrow.circlepath")
-            .foregroundColor(isLate ? .red : .blue)
+        let durationMinutes = sharedDefault.integer(
+            forKey: context.attributes.prefixedKey("currentDurationMinutes"))
+        HStack(spacing: 2) {
+            Image(systemName: "car.fill")
+                .foregroundColor(.orange)
+            Text("\(durationMinutes)m")
+                .font(.caption)
+                .fontWeight(.bold)
+                .foregroundColor(.white)
+        }
     }
 }
 
@@ -234,10 +245,14 @@ struct CompactTrailingView: View {
             forKey: context.attributes.prefixedKey("leaveByTime")) ?? "--:--"
         let isLate = sharedDefault.bool(
             forKey: context.attributes.prefixedKey("isLate"))
-        Text(leaveByTime)
-            .font(.caption)
-            .fontWeight(.bold)
-            .foregroundColor(isLate ? .red : .white)
+        HStack(spacing: 2) {
+            Image(systemName: "clock.arrow.circlepath")
+                .foregroundColor(isLate ? .red : .blue)
+            Text(leaveByTime)
+                .font(.caption)
+                .fontWeight(.bold)
+                .foregroundColor(isLate ? .red : .white)
+        }
     }
 }
 
@@ -248,7 +263,16 @@ struct MinimalView: View {
     var body: some View {
         let isLate = sharedDefault.bool(
             forKey: context.attributes.prefixedKey("isLate"))
-        Image(systemName: isLate ? "exclamationmark.circle.fill" : "car.fill")
-            .foregroundColor(isLate ? .red : .blue)
+        let durationMinutes = sharedDefault.integer(
+            forKey: context.attributes.prefixedKey("currentDurationMinutes"))
+        if durationMinutes > 0 {
+            Text("\(durationMinutes)m")
+                .font(.caption)
+                .fontWeight(.bold)
+                .foregroundColor(isLate ? .red : .white)
+        } else {
+            Image(systemName: isLate ? "exclamationmark.circle.fill" : "car.fill")
+                .foregroundColor(isLate ? .red : .blue)
+        }
     }
 }

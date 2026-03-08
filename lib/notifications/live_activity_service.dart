@@ -3,25 +3,32 @@ import 'dart:io';
 
 import 'package:intl/intl.dart';
 import 'package:live_activities/live_activities.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 /// App Group ID shared between the main app and the widget extension.
 const _appGroupId = 'group.com.jita.jita';
 
-/// Stable identifier for the single JITA live activity instance.
+/// Stable custom identifier for the single JITA live activity.
+///
+/// This is the `customId` parameter passed to `createOrUpdateActivity` and
+/// **not** the system-generated activity ID. The `live_activities` plugin
+/// uses this value to match an existing ActivityKit activity so it can
+/// update it in place instead of creating a duplicate.
 const _jitaActivityId = 'jita-route-monitor';
-
-/// SharedPreferences key for persisting the current live activity ID.
-const _activityIdKey = 'live_activity_id';
 
 /// Service that manages iOS Live Activity for route monitoring.
 ///
 /// Displays "Leave By" time and current route duration on the lock screen
 /// and Dynamic Island. Data is passed to the native widget extension via
 /// [UserDefaults] through the `live_activities` package.
+///
+/// This service uses [LiveActivities.createOrUpdateActivity] which is
+/// idempotent: if a live activity with [_jitaActivityId] already exists it
+/// will be updated; otherwise a new one is created. This eliminates an
+/// entire class of bugs around stale activity IDs after app kills, race
+/// conditions between main and background isolates, and the need to
+/// manually persist/reload activity IDs across isolates.
 class LiveActivityService {
   final LiveActivities _plugin = LiveActivities();
-  String? _activityId;
 
   /// Initializes the plugin. Must be called before any other method.
   Future<void> initialize() async {
@@ -29,7 +36,11 @@ class LiveActivityService {
     await _plugin.init(appGroupId: _appGroupId);
   }
 
-  /// Starts a new live activity with the given route data.
+  /// Starts (or updates) the live activity with the given route data.
+  ///
+  /// Uses [LiveActivities.createOrUpdateActivity] so that:
+  /// - On the first call a new Live Activity is created.
+  /// - On subsequent calls the existing activity is updated in place.
   ///
   /// [leaveByTime] is the computed required departure time.
   /// [currentDurationMinutes] is the current traffic-aware travel time in minutes.
@@ -44,19 +55,17 @@ class LiveActivityService {
     if (!Platform.isIOS) return;
 
     try {
-      final timeFormat = DateFormat('HH:mm');
-      final data = <String, dynamic>{
-        'leaveByTime': timeFormat.format(leaveByTime),
-        'currentDurationMinutes': currentDurationMinutes,
-        'destinationName': destinationName,
-        'isLate': isLate,
-      };
+      final data = _buildData(
+        leaveByTime: leaveByTime,
+        currentDurationMinutes: currentDurationMinutes,
+        destinationName: destinationName,
+        isLate: isLate,
+      );
 
-      _activityId = await _plugin.createActivity(_jitaActivityId, data);
-      await _persistActivityId(_activityId);
+      await _plugin.createOrUpdateActivity(_jitaActivityId, data);
 
       log(
-        'Live activity started | id=$_activityId',
+        'Live activity started | customId=$_jitaActivityId',
         name: 'LiveActivityService',
       );
     } catch (e) {
@@ -69,26 +78,30 @@ class LiveActivityService {
   }
 
   /// Updates the existing live activity with fresh route data.
+  ///
+  /// If no activity exists yet this will create one automatically (handled
+  /// by the plugin's `createOrUpdateActivity` method). The
+  /// [destinationName] should always be provided so the widget can display
+  /// it regardless of whether the activity was just created or updated.
   Future<void> updateActivity({
     required DateTime leaveByTime,
     required int currentDurationMinutes,
     required bool isLate,
+    required String destinationName,
   }) async {
     if (!Platform.isIOS) return;
 
-    _activityId ??= await _loadPersistedActivityId();
-    if (_activityId == null) return;
-
     try {
+      final data = _buildData(
+        leaveByTime: leaveByTime,
+        currentDurationMinutes: currentDurationMinutes,
+        destinationName: destinationName,
+        isLate: isLate,
+      );
+
+      await _plugin.createOrUpdateActivity(_jitaActivityId, data);
+
       final timeFormat = DateFormat('HH:mm');
-      final data = <String, dynamic>{
-        'leaveByTime': timeFormat.format(leaveByTime),
-        'currentDurationMinutes': currentDurationMinutes,
-        'isLate': isLate,
-      };
-
-      await _plugin.updateActivity(_activityId!, data);
-
       log(
         'Live activity updated | leave by ${timeFormat.format(leaveByTime)} '
         '| duration=${currentDurationMinutes}min',
@@ -107,21 +120,18 @@ class LiveActivityService {
   Future<void> endActivity() async {
     if (!Platform.isIOS) return;
 
-    _activityId ??= await _loadPersistedActivityId();
-    if (_activityId == null) return;
-
     try {
-      await _plugin.endActivity(_activityId!);
-      log('Live activity ended | id=$_activityId', name: 'LiveActivityService');
+      await _plugin.endAllActivities();
+      log(
+        'Live activity ended | customId=$_jitaActivityId',
+        name: 'LiveActivityService',
+      );
     } catch (e) {
       log(
         'Failed to end live activity: $e',
         name: 'LiveActivityService',
         level: 900,
       );
-    } finally {
-      _activityId = null;
-      await _persistActivityId(null);
     }
   }
 
@@ -131,8 +141,6 @@ class LiveActivityService {
 
     try {
       await _plugin.endAllActivities();
-      _activityId = null;
-      await _persistActivityId(null);
     } catch (e) {
       log(
         'Failed to end all live activities: $e',
@@ -142,19 +150,19 @@ class LiveActivityService {
     }
   }
 
-  /// Persists the activity ID so the background isolate can access it.
-  Future<void> _persistActivityId(String? id) async {
-    final prefs = await SharedPreferences.getInstance();
-    if (id != null) {
-      await prefs.setString(_activityIdKey, id);
-    } else {
-      await prefs.remove(_activityIdKey);
-    }
-  }
-
-  /// Loads the persisted activity ID (for use in background isolate).
-  Future<String?> _loadPersistedActivityId() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_activityIdKey);
+  /// Builds the data map sent to the native widget extension via UserDefaults.
+  Map<String, dynamic> _buildData({
+    required DateTime leaveByTime,
+    required int currentDurationMinutes,
+    required String destinationName,
+    required bool isLate,
+  }) {
+    final timeFormat = DateFormat('HH:mm');
+    return <String, dynamic>{
+      'leaveByTime': timeFormat.format(leaveByTime),
+      'currentDurationMinutes': currentDurationMinutes,
+      'destinationName': destinationName,
+      'isLate': isLate,
+    };
   }
 }
